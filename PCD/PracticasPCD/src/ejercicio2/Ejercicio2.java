@@ -11,6 +11,7 @@ public class Ejercicio2 {
 	public static int contador = 0;											//Contador de cuantas palabras llevamos generadas
 	public static Semaphore mutexPantalla = new Semaphore(1);				//Semaforo binario para la exclusion mutua de la pantalla
 	public static Semaphore mutexArray = new Semaphore(1);					//Semaforo binario para la exclusion mutua del array de todas las palabras
+	public static Semaphore terminados = new Semaphore(0);
 	private static LinkedList<Thread> hilos = new LinkedList<Thread>();		//Lista de hilos para agilizar su ejecución
 
 	public static void main(String[] args) {
@@ -100,11 +101,13 @@ class Hilo extends Thread {
 		Ejercicio2.contador++;					//Aumentamos el contador
 		Ejercicio2.mutexArray.release();		//Devolvemos el semaforo
 		
-		while(Ejercicio2.contador!=30) {		//Esperamos a que se generen las 30 palabras
+		if(Ejercicio2.contador!=30) {				//Esperamos a que se generen las 30 palabras
 			try {
-				Thread.sleep((long) (Math.random()*1000));
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
+				Ejercicio2.terminados.acquire();	//Si no estan generadas nos dormimos
+			} catch (InterruptedException e) {}
+		} else {
+			for(int i=0;i<30;i++) {
+				Ejercicio2.terminados.release();	//Cuando todos los hilos terminan los despertamos a todos
 			}
 		}
 		
