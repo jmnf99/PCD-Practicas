@@ -38,36 +38,52 @@ public class Ejercicio3 {
 class Buffer{
 	
 	private ReentrantLock l = new ReentrantLock();		//Cerrojo para la exclusion mutua
-	private Condition productor = l.newCondition();		//Condition para el control de los productores
-	private Condition consumidor = l.newCondition();	//Condition para el control de los consumidores
+	private Condition productor = l.newCondition(); 	//Condition para el control de los productores
+	private Condition consumidor1 = l.newCondition();
+	private Condition consumidor2 = l.newCondition();	//Condition para el control de los consumidores
 	private ElementoB buffer[];							//Buffer
-	private int in,out,tam;								//Variables para controlar por donde hay que devolver objetos y por donde hay que meterlos en el buffer
+	private int tam;								//Variables para controlar por donde hay que devolver objetos y por donde hay que meterlos en el buffer
 	private int tipo1,tipo2;							//Variables que controlan la cantidad de objetos de cada tipo
 	
 	public Buffer(int ele) {					//Inicializacion del monitor
 		buffer = new ElementoB[ele];
 		for(int i=0;i<buffer.length;i++) buffer[i]=null;
-		tipo1=tipo2=in=out=tam=0;
+		tipo1=tipo2=tam=0;
 	}
 	
-	//Funcion que devuelve el tipo del objeto en la cabeza del buffer para saber si un consumidor puede extraer
-	synchronized public int getTipoCabeza() {	
-		if(buffer[out]!=null) return buffer[out].tipo;
-		else return 0;
+	synchronized private int buscarHueco(ElementoB[] array) {
+		for(int i=0; i<array.length; i++) {
+			if(array[i]==null) return i;
+		}
+		return -1;
+	}
+	
+	synchronized private int buscarEleTipo(ElementoB[] array, int tipo) {
+		for(int i=0; i<array.length; i++) {
+			if(array[i]!=null && array[i].tipo==tipo) return i;
+		}
+		return -1;
 	}
 	
 	public void depositar(ElementoB ele) throws InterruptedException {
 		l.lock();			//Cogemos el cerrojo para cumplir la exclusion mutua es igual en todas las funciones
 		try {
-			while(tam>=buffer.length)	//Si el array esta lleno no podemos insertar
+			while(tam>=buffer.length) {	//Si el array esta lleno no podemos insertar
 				productor.await();
-			buffer[in]=ele;				//insertamos
-			in=(in+1)%buffer.length;	//Calculamos la nueva posicion donde insertar
+			}
+			
+			int pos = buscarHueco(buffer);
+			buffer[pos]=ele;				//insertamos
+			//in=(in+1)%buffer.length;	//Calculamos la nueva posicion donde insertar
 			tam++;						//Aumentamos la variable que controla cuantos elementos llevamos
-			if(ele.tipo==1) tipo1++;	//Si el elemento insertado es de tipo 1 se aumenta su variable
-			else tipo2++;				//si no se aumenta la otra
-			System.out.println("Insertamos Elemento de tipo " + ele.tipo + " Quedan " + getElementos());
-			consumidor.signal();		//Hacemos un signal a un consumidor 
+			if(ele.tipo==1) {
+				tipo1++;				//Si el elemento insertado es de tipo 1 se aumenta su variable
+				consumidor1.signal();
+			} else {
+				tipo2++;				//si no se aumenta la otra
+				consumidor2.signal();
+			}
+			System.out.println("Insertamos Elemento de tipo " + ele.tipo + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
 		}finally {
 			l.unlock();		//Devolvemos el cerrojo, igual en todas las funciones
 		}
@@ -76,15 +92,17 @@ class Buffer{
 	public ElementoB extraer1() throws InterruptedException{
 		l.lock();
 		try{
-			while(tipo1==0 || getTipoCabeza()!=1) {		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
-				consumidor.await();
+			while(tipo1==0) {		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
+				consumidor1.await();
 			}
-			ElementoB ele=buffer[out];			//Extraemos el elemento
-			buffer[out]=null;					
-			out=(out+1)%buffer.length;			//Calculamos la nueva posicion para extraer
+			
+			int pos = buscarEleTipo(buffer, 1);
+			ElementoB ele=buffer[pos];			//Extraemos el elemento
+			buffer[pos]=null;					
+			//out=(out+1)%buffer.length;			//Calculamos la nueva posicion para extraer
 			tam--;								//Reducimos la cantidad de elementos en el buffer
 			tipo1--;							//Reducimos la cantidad de elementos de este tipo
-			System.out.println("Extraemos Elemento de tipo 1" + " Quedan " + getElementos());
+			System.out.println("Extraemos Elemento de tipo 1 " + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
 			productor.signal();					//Llamamos a un productor
 			return ele;							//Devolvemos el elemento
 		}finally{
@@ -95,14 +113,16 @@ class Buffer{
 	public ElementoB extraer2() throws InterruptedException{
 		l.lock();
 		try{
-			while(tipo2==0 || getTipoCabeza()!=2)		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
-				consumidor.await();
-			ElementoB ele=buffer[out];					//Extraemos el elemento
-			buffer[out]=null;
-			out=(out+1)%buffer.length;					//Calculamos la nueva posicion para extraer
+			while(tipo2==0)			//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
+				consumidor2.await();
+			
+			int pos = buscarEleTipo(buffer, 2);
+			ElementoB ele=buffer[pos];					//Extraemos el elemento
+			buffer[pos]=null;
+			//out=(out+1)%buffer.length;					//Calculamos la nueva posicion para extraer
 			tam--;										//Calculamos la nueva posicion para extraer
 			tipo2--;									//Reducimos la cantidad de elementos de este tipo
-			System.out.println("Extraemos Elemento de tipo 2" + " Quedan " + getElementos());
+			System.out.println("Extraemos Elemento de tipo 2 " + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
 			productor.signal();							//Llamamos a un productor
 			return ele;									//Devolvemos el elemento
 		}finally{
