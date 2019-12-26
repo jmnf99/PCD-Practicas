@@ -45,8 +45,8 @@ class Buffer{
 	private int tam;								//Variables para controlar por donde hay que devolver objetos y por donde hay que meterlos en el buffer
 	private int tipo1,tipo2;							//Variables que controlan la cantidad de objetos de cada tipo
 	
-	public Buffer(int ele) {					//Inicializacion del monitor
-		buffer = new ElementoB[ele];
+	public Buffer(int _tam) {					//Inicializacion del monitor
+		buffer = new ElementoB[_tam];
 		for(int i=0;i<buffer.length;i++) buffer[i]=null;
 		tipo1=tipo2=tam=0;
 	}
@@ -74,7 +74,6 @@ class Buffer{
 			
 			int pos = buscarHueco(buffer);
 			buffer[pos]=ele;				//insertamos
-			//in=(in+1)%buffer.length;	//Calculamos la nueva posicion donde insertar
 			tam++;						//Aumentamos la variable que controla cuantos elementos llevamos
 			if(ele.tipo==1) {
 				tipo1++;				//Si el elemento insertado es de tipo 1 se aumenta su variable
@@ -83,13 +82,41 @@ class Buffer{
 				tipo2++;				//si no se aumenta la otra
 				consumidor2.signal();
 			}
-			System.out.println("Insertamos Elemento de tipo " + ele.tipo + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
+			System.out.println("Insertamos\t Elemento "+ ele.item +" de tipo " + ele.tipo + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
 		}finally {
 			l.unlock();		//Devolvemos el cerrojo, igual en todas las funciones
 		}
 	}
 	
-	public ElementoB extraer1() throws InterruptedException{
+	
+	public ElementoB extraer(int tipo) throws InterruptedException{
+		l.lock();
+		try{
+			if(tipo == Productor1.TIPO) {
+				while(tipo1==0) {		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
+					consumidor1.await();
+				}
+			} else {
+				while(tipo2==0)			//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
+					consumidor2.await();
+			}
+			
+			int pos = buscarEleTipo(buffer, tipo);
+			ElementoB ele=buffer[pos];			//Extraemos el elemento
+			buffer[pos]=null;					
+			tam--;								//Reducimos la cantidad de elementos en el buffer
+			//Reducimos la cantidad de elementos de este tipo
+			if(tipo == Productor1.TIPO) tipo1--;
+			else tipo2--;
+			System.out.println("Extraemos\t Elemento "+ ele.item +" de tipo " + tipo + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
+			productor.signal();					//Llamamos a un productor
+			return ele;							//Devolvemos el elemento
+		}finally{
+			l.unlock();
+		}
+	}
+	
+	/*	public ElementoB extraer1() throws InterruptedException{
 		l.lock();
 		try{
 			while(tipo1==0) {		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
@@ -99,10 +126,9 @@ class Buffer{
 			int pos = buscarEleTipo(buffer, 1);
 			ElementoB ele=buffer[pos];			//Extraemos el elemento
 			buffer[pos]=null;					
-			//out=(out+1)%buffer.length;			//Calculamos la nueva posicion para extraer
 			tam--;								//Reducimos la cantidad de elementos en el buffer
 			tipo1--;							//Reducimos la cantidad de elementos de este tipo
-			System.out.println("Extraemos Elemento de tipo 1 " + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
+			System.out.println("Extraemos\t Elemento "+ ele.item +" de tipo 1 " + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
 			productor.signal();					//Llamamos a un productor
 			return ele;							//Devolvemos el elemento
 		}finally{
@@ -119,18 +145,18 @@ class Buffer{
 			int pos = buscarEleTipo(buffer, 2);
 			ElementoB ele=buffer[pos];					//Extraemos el elemento
 			buffer[pos]=null;
-			//out=(out+1)%buffer.length;					//Calculamos la nueva posicion para extraer
 			tam--;										//Calculamos la nueva posicion para extraer
 			tipo2--;									//Reducimos la cantidad de elementos de este tipo
-			System.out.println("Extraemos Elemento de tipo 2 " + " Quedan " + tipo1 + " Elementos del tipo 1 y " + tipo2 + " Elementos del tipo 2");
+			System.out.println("Extraemos\t Elemento "+ ele.item + " de tipo 2 " + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
 			productor.signal();							//Llamamos a un productor
 			return ele;									//Devolvemos el elemento
 		}finally{
 			l.unlock();
 		}
-	}
-	
+	}*/
 	//Metodo para obtener cuantos elementos quedan en el buffer
+	
+	
 	public int getElementos() {
 		return tam;
 	}
@@ -138,7 +164,7 @@ class Buffer{
 
 class Productor1 extends Thread{
 	private Buffer buffer;
-	private static final int TIPO = 1;		//Tipo de productor
+	public static final int TIPO = 1;		//Tipo de productor
 	
 	public Productor1(Buffer b){
 		buffer=b;
@@ -149,7 +175,7 @@ class Productor1 extends Thread{
 			// producir elemento			
 			int item = (int)(Math.random()*10);
 			try{
-				Thread.sleep((int)Math.random()*10);
+				Thread.sleep((int)Math.random()*100);
 			}catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -166,7 +192,7 @@ class Productor1 extends Thread{
 
 class Productor2 extends Thread{
 	private Buffer buffer;
-	private static final int TIPO = 2;
+	public static final int TIPO = 2;
 	
 	public Productor2(Buffer b){
 		buffer=b;
@@ -176,7 +202,7 @@ class Productor2 extends Thread{
 		//Repetimos 20 veces
 		for(int i=1;i<20;i++){
 			// producir elemento
-			int item = (int)(Math.random()*10);
+			int item = (int)(Math.random()*100);
 			try{
 				Thread.sleep((int)Math.random()*10);
 			}catch (InterruptedException e) {
@@ -205,7 +231,7 @@ class Consumidor1 extends Thread{
 			// extraer elemento 
 			try{
 				//Extraemos elemento de nuestro tipo
-				ElementoB item = buffer.extraer1();
+				ElementoB item = buffer.extraer(Productor1.TIPO);
 			} catch(InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -231,7 +257,7 @@ class Consumidor2 extends Thread{
 			// extraer elemento 
 			try{
 				//Extraemos elemento de nuestro tipo
-				ElementoB item = buffer.extraer2();
+				ElementoB item = buffer.extraer(Productor2.TIPO);
 			} catch(InterruptedException e) {
 				e.printStackTrace();
 			}
