@@ -81,7 +81,7 @@ class Buffer{
 				tipo2++;				//si no se aumenta la otra
 //				consumidor2.signalAll();
 			}
-			consumidor.signal();
+			consumidor.signal();		//despertamos un consumidor cualquiera
 			System.out.println("Insertamos\t Elemento "+ ele.item +" de tipo " + ele.tipo + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
 		}finally {
 			l.unlock();					//Devolvemos el cerrojo, igual en todas las funciones
@@ -93,11 +93,11 @@ class Buffer{
 		l.lock();
 		try{
 			if(tipo == Productor1.TIPO) {
-				while(tipo1==0) {		//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
-					consumidor.await();
+				while(tipo1==0) {		//Si no hay ningun elemento de mi tipo
+					consumidor.await();	
 				}
 			} else {
-				while(tipo2==0)			//Si no hay ningun elemento de mi tipo o no esta en la cabeza esperamos
+				while(tipo2==0)			//Si no hay ningun elemento de mi tipo
 					consumidor.await();
 			}
 			
@@ -109,7 +109,7 @@ class Buffer{
 			if(tipo == Productor1.TIPO) tipo1--;
 			else tipo2--;
 			System.out.println("Extraemos\t Elemento "+ ele.item +" de tipo " + tipo + "\t Quedan " + tipo1 + " Elementos del tipo 1 y \t" + tipo2 + " Elementos del tipo 2");
-			productor.signal();					//Llamamos a un productor
+			productor.signal();					//Llamamos a un productor cualquiera
 			return ele;							//Devolvemos el elemento
 		}finally{
 			l.unlock();
