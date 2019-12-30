@@ -11,6 +11,7 @@ public class Ejercicio2 {
 	public static int contador = 0;											//Contador de cuantas palabras llevamos generadas
 	public static Semaphore mutexPantalla = new Semaphore(1);				//Semaforo binario para la exclusion mutua de la pantalla
 	public static Semaphore mutexArray = new Semaphore(1);					//Semaforo binario para la exclusion mutua del array de todas las palabras
+	public static Semaphore mutexContador = new Semaphore(1);				//Semaforo binario para la exclusion mutua del contador
 	public static Semaphore terminados = new Semaphore(0);					//Semaforo general para la condicion de sincronizacion
 	private static LinkedList<Thread> hilos = new LinkedList<Thread>();		//Lista de hilos para agilizar su ejecución
 
@@ -98,8 +99,13 @@ class Hilo extends Thread {
 			Ejercicio2.mutexArray.acquire();	//Adquirimos el semaforo del array para añadir la palabra
 		} catch (InterruptedException e) {}
 		Ejercicio2.palabras.add(palabra);		//Añadimos la palabra al array de palabras
-		Ejercicio2.contador++;					//Aumentamos el contador
 		Ejercicio2.mutexArray.release();		//Devolvemos el semaforo
+		
+		try {
+			Ejercicio2.mutexContador.acquire();	//Adquirimos el semaforo del contador
+		} catch (InterruptedException e1) {}
+		Ejercicio2.contador++;					//Aumentamos el contador
+		Ejercicio2.mutexContador.release();
 		
 		if(Ejercicio2.contador!=30) {				//Comprobamos que ya estan las 30 palabras
 			try {
