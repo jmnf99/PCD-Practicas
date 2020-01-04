@@ -107,7 +107,7 @@ class Servidor extends Thread {
 		while(true) {
 			buzonServidor.setGuardValue(true);
 			buzonFinal.setGuardValue(true);
-			System.out.println("Aqui esperando");
+			//System.out.println("Aqui esperando");
 			switch(s.selectOrBlock()) {
 				case 1: int id = (int) buzonServidor.receive();
 					int tiempo = (int)(Math.random()*9+1);
@@ -147,7 +147,7 @@ public class Ejercicio4 {
 		
 		for(int i=0; i<30; i++) {
 			buzonesHilos[i] = new MailBox();
-			hilos[i] = new Hilo(i, buzonesHilos[i], buzonServidor, buzonFinal, buzonMutex);
+			hilos[i] = new Hilo(i, buzonServidor, buzonesHilos[i], buzonFinal, buzonMutex);
 		}
 		
 		Servidor serv = new Servidor(buzonesHilos, buzonServidor, buzonFinal);
